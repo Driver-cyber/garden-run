@@ -24,7 +24,7 @@ URL someone can open and play.
   - *Obstacles* — cheap, fast cooldown, **block or slow** the Hero, **no direct damage.**
     Their job: stall the Hero into the advancing wall.
   - *Weapons* — costly, slow cooldown, **deal damage / knock health.** Their job: direct harm,
-    used sparingly.
+    used less often than obstacles.
 - **Villain "brain" = a swappable module.** The AI's trap decisions live behind a clean
   interface: *given the current game state, return placements.* Build it so a different brain
   (a remote human, later) could slot in without rewriting the game. This is an **architecture
