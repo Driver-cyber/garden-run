@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How to Play — Garden Run</title>
+<link rel="icon" href='data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><path d="M20 4l4 2-2 4 4-1-2 5-12 14-6-6z" fill="%235FA052"/><path d="M10 28L24 12c1-3-3-7-6-6L4 22c-1 3 3 7 6 6z" fill="%23E8833D"/></svg>'>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,900&family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{ --cream:#F7EFDF; --cream-2:#EFE3CC; --walnut:#4A372A; --walnut-2:#6B5240;
+    --amber:#E8A33D; --amber-2:#D98A2B; --leaf:#5FA052; --red:#D96C4F;
+    --display:"Fraunces",Georgia,serif; --ui:"Plus Jakarta Sans",system-ui,sans-serif; }
+  *{box-sizing:border-box}
+  body{margin:0; font-family:var(--ui); color:var(--walnut); background:var(--cream);}
+  canvas.px{image-rendering:pixelated}
+
+  header{min-height:46vh; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    text-align:center; padding:48px 20px 36px;}
+  .eyebrow{font-size:11px; font-weight:800; letter-spacing:.28em; text-transform:uppercase; color:var(--amber-2); margin:0 0 8px;}
+  header h1{font-family:var(--display); font-weight:900; font-size:clamp(36px,7vw,64px); margin:0 0 8px; line-height:.95;}
+  header p{max-width:480px; font-size:15px; line-height:1.55; color:var(--walnut-2); margin:0 0 14px;}
+  .scrollhint{font-size:12px; font-weight:700; color:var(--walnut-2); opacity:.8; animation:bob 1.6s ease-in-out infinite;}
+  @keyframes bob{50%{transform:translateY(6px)}}
+
+  #scrolly{position:relative; height:520vh;}
+  #pin{position:sticky; top:0; height:100vh; overflow:hidden;
+    background:linear-gradient(180deg,#A9DAEC 0%, #CFEAE2 52%, #E4F2DC 70%, #6FB05C 70.2%, #6FB05C 84%, #7A5538 84.2%, #6B4A2E 100%);}
+  .layer{position:absolute; left:0; top:0; pointer-events:none; will-change:transform;}
+  .clouds{top:5vh; height:16vh; width:400%;
+    background:radial-gradient(closest-side, #FFFFFFE6 78%, transparent 80%) 0 60%/130px 56px,
+               radial-gradient(closest-side, #FFFFFFD0 78%, transparent 80%) 300px 20%/170px 64px,
+               radial-gradient(closest-side, #FFFFFFE0 78%, transparent 80%) 640px 50%/120px 50px,
+               radial-gradient(closest-side, #FFFFFFD0 78%, transparent 80%) 950px 15%/150px 60px;
+    background-repeat:repeat-x;}
+  .hills{top:48vh; height:22vh; width:400%;
+    background:radial-gradient(closest-side, #A8CFA0 99%, transparent) 0 100%/420px 200px,
+               radial-gradient(closest-side, #97C28E 99%, transparent) 260px 100%/520px 240px;
+    background-repeat:repeat-x;}
+  .hedge{top:59vh; height:12vh; width:400%;
+    background:radial-gradient(closest-side, #47803E 99%, transparent) 0 100%/120px 130px,
+               radial-gradient(closest-side, #528C46 99%, transparent) 60px 100%/120px 150px;
+    background-repeat:repeat-x;}
+  #track{position:absolute; inset:0; display:flex; will-change:transform;}
+  .panel{flex:0 0 100vw; height:100vh; display:flex; align-items:center; justify-content:center; padding:4vh 6vw 12vh;}
+  .plate{background:var(--cream); border:4px solid var(--walnut); border-radius:18px; max-width:540px; width:100%;
+    padding:24px 28px 22px; box-shadow:0 8px 0 #4a372a33, inset 0 0 0 6px var(--cream), inset 0 0 0 8px var(--amber);}
+  .step{font-size:11px; font-weight:800; letter-spacing:.24em; text-transform:uppercase; color:var(--amber-2); margin:0 0 4px;}
+  .plate h2{font-family:var(--display); font-weight:900; font-size:clamp(24px,3.6vw,36px); margin:0 0 8px; line-height:1;}
+  .plate p{font-size:13.5px; line-height:1.55; color:var(--walnut-2); margin:0 0 8px;}
+  .artrow{display:flex; gap:16px; align-items:flex-end; margin:8px 0 12px; flex-wrap:wrap;}
+  .figure{text-align:center;}
+  .figure b{display:block; font-size:10px; letter-spacing:.07em; text-transform:uppercase; margin-top:4px; color:var(--walnut-2); max-width:110px;}
+  kbd{font-family:var(--ui); font-weight:800; font-size:11px; background:var(--cream-2); border:2px solid var(--walnut);
+    border-bottom-width:4px; border-radius:7px; padding:2px 7px; margin:0 1px;}
+  .tag{display:inline-block; font-size:10.5px; font-weight:800; letter-spacing:.06em; text-transform:uppercase;
+    border:2px solid var(--walnut); border-radius:99px; padding:2px 9px; margin:0 2px; background:var(--cream-2);}
+  .tag.ok{background:#DCEFD2; border-color:var(--leaf); color:#3A5F33}
+  .tag.ouch{background:#F7DCD2; border-color:var(--red); color:#8F3A24}
+  .progressbar{position:fixed; left:0; top:0; height:5px; width:0%; background:var(--amber); z-index:50; border-radius:0 99px 99px 0;}
+  footer{min-height:42vh; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:40px 20px 70px;}
+  a.btn{font-family:var(--ui); font-weight:800; font-size:16px; text-decoration:none; color:var(--walnut);
+    background:var(--amber); border:3px solid var(--walnut); border-radius:12px; padding:14px 34px;
+    box-shadow:0 5px 0 var(--amber-2); display:inline-block; transition:transform .08s;}
+  a.btn:hover{transform:translateY(-1px)} a.btn:active{transform:translateY(3px); box-shadow:0 1px 0 var(--amber-2)}
+  a.btn:focus-visible{outline:3px solid var(--amber); outline-offset:3px}
+  footer p{font-size:13px; color:var(--walnut-2); margin:14px 0 0;}
+
+  @media (max-width: 760px), (prefers-reduced-motion: reduce){
+    #scrolly{height:auto;}
+    #pin{position:static; height:auto; overflow:visible; padding:24px 0;
+      background:linear-gradient(180deg,#CFEAE2,#E4F2DC);}
+    #track{position:static; display:block; transform:none !important;}
+    .panel{flex:none; width:auto; height:auto; padding:14px 14px;}
+    .layer{display:none;}
+    .scrollhint{animation:none;}
+  }
+</style>
+</head>
+<body>
+<div class="progressbar" id="pb"></div>
+
+<header>
+  <p class="eyebrow">Field guide · Garden Run</p>
+  <h1>How to outrun<br>a paranoid carrot</h1>
+  <p>Five things to know before you hop. Scroll, and the garden rolls past —
+     exactly the way it will when the Last Carrot starts throwing things at you.</p>
+  <div class="scrollhint">▼ scroll to stroll</div>
+</header>
+
+<section id="scrolly">
+  <div id="pin">
+    <div class="layer clouds" data-depth="0.12"></div>
+    <div class="layer hills" data-depth="0.3"></div>
+    <div class="layer hedge" data-depth="0.55"></div>
+    <div id="track">
+
+      <div class="panel">
+        <div class="plate">
+          <p class="step">Step 1 · The runner</p>
+          <h2>You are the rabbit.</h2>
+          <div class="artrow"><div class="figure"><canvas class="px" id="cRabbit" width="84" height="78"></canvas><b>fast, fluffy, hungry</b></div></div>
+          <p><kbd>→</kbd> <kbd>←</kbd> or <kbd>A</kbd> <kbd>D</kbd> to run · <kbd>Space</kbd> or <kbd>↑</kbd> to jump —
+             hold it for a higher hop. Keep moving <em>right</em>, toward the patch.</p>
+          <p><kbd>R</kbd> restarts · <kbd>M</kbd> mutes.</p>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="plate">
+          <p class="step">Step 2 · The schemer</p>
+          <h2>The Last Carrot is watching.</h2>
+          <div class="artrow">
+            <div class="figure"><canvas class="px" id="cCarrot" width="60" height="76"></canvas><b>the villain</b></div>
+            <div class="figure"><canvas class="px" id="cFence" width="56" height="76"></canvas><b>fence — jump it</b></div>
+            <div class="figure"><canvas class="px" id="cMud" width="96" height="22"></canvas><b>mud — slows you</b></div>
+            <div class="figure"><canvas class="px" id="cCabbage" width="52" height="52"></canvas><b>cabbage — bounce off its top!</b></div>
+          </div>
+          <p>From its root-cellar bunker it spends <b>scheme power</b> on obstacles.
+            <span class="tag ok">no damage</span> They only slow you down — which is the whole evil plan.</p>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="plate">
+          <p class="step">Step 3 · The dirty tricks</p>
+          <h2>Some things actually hurt.</h2>
+          <div class="artrow">
+            <div class="figure"><canvas class="px" id="cPot" width="52" height="52"></canvas><b>flowerpot — watch the shadow</b></div>
+            <div class="figure"><canvas class="px" id="cBee" width="52" height="46"></canvas><b>bees — they give up eventually</b></div>
+            <div class="figure"><canvas class="px" id="cHearts" width="120" height="34"></canvas><b>your three hearts</b></div>
+          </div>
+          <p>Weapons cost the Carrot dearly, so they're rarer — but each one takes
+            <span class="tag ouch">one heart</span>. Lose all three and it's nap time in the daisies.</p>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="plate">
+          <p class="step">Step 4 · The wall</p>
+          <h2>The mower never stops.</h2>
+          <div class="artrow"><div class="figure"><canvas class="px" id="cMower" width="128" height="88"></canvas><b>it just keeps coming</b></div></div>
+          <p>It chews up the garden behind you — fences, cabbages, everything.
+             Every second an obstacle stalls you, it gets closer. If it catches you: <em>mulched.</em></p>
+          <p>Watch the track at the top of the screen — rabbit ahead, mower behind.</p>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="plate">
+          <p class="step">Step 5 · The patch</p>
+          <h2>Reach the gate. Win lunch.</h2>
+          <div class="artrow"><div class="figure"><canvas class="px" id="cGate" width="120" height="120"></canvas><b>the finish line</b></div></div>
+          <p>Cross under the arch and the patch is yours — and somewhere far behind you,
+             one very tired lawnmower finally gets to rest.</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<footer>
+  <a class="btn" href="index.html">Ready — let's run</a>
+  <p>Garden Run · a cozy chase between one rabbit and one very paranoid carrot.</p>
+</footer>
+
+<script>
+'use strict';
+/* ---- the game's own original art, trimmed static copies ---- */
+function cv(w,h){const c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d');x.imageSmoothingEnabled=false;return [c,x];}
+function E(x,cx,cy,rx,ry,col,rot){x.fillStyle=col;x.beginPath();x.ellipse(cx,cy,rx,ry,rot||0,0,7);x.fill();}
+function R(x,a,b,w,h,col){x.fillStyle=col;x.fillRect(a,b,w,h);}
+function RR(x,a,b,w,h,r,col){x.fillStyle=col;x.beginPath();x.roundRect(a,b,w,h,r);x.fill();}
+const PAL={fur:'#F4E9D6',furShade:'#E0CDAE',pink:'#F2B5A0',ink:'#3A2B20',walnut:'#4A372A',walnut2:'#6B5240',
+amber:'#E8A33D',leaf:'#5FA052',leafDark:'#47803E',leafLight:'#7FBF6E',soil:'#7A5538',soilDark:'#5E4029',
+mud:'#6B4A2E',terra:'#C96F45',terraDark:'#A85636',red:'#D96C4F',cream:'#F7EFDF',bee:'#F2C04B'};
+function drawRabbit(){const [c,x]=cv(28,26);
+  E(x,4.5,16.5,3.2,3.2,'#FFFDF6');E(x,9,20.5,4.4,3.2,PAL.furShade,-0.24);E(x,12.5,15.5,8.2,6.4,PAL.fur,-0.12);
+  E(x,20,20.5,3.4,2.8,PAL.furShade,0.24);E(x,21,10.5,5.6,5.2,PAL.fur);
+  E(x,16.8,3.0,2.0,6.0,PAL.furShade,-0.42);E(x,21.8,2.2,2.2,6.4,PAL.fur,-0.12);E(x,21.9,3.0,1.05,4.2,PAL.pink,-0.12);
+  R(x,22.8,8.6,2.0,2.2,PAL.ink);R(x,23.4,9.0,0.7,0.7,'#fff');E(x,26.3,12.2,1.2,1.0,PAL.pink);
+  E(x,14,13.5,2.6,2.0,'#FFFDF6',-0.2);return c;}
+function drawCarrot(){const [c,x]=cv(38,48);
+  R(x,0,40,38,8,'#241a12');R(x,3,6,4,30,'#4a372a');R(x,31,6,4,30,'#4a372a');
+  R(x,5,10,2,8,'#8a6a50');E(x,6,9,1.5,1.5,PAL.red);R(x,32,14,2,7,'#8a6a50');E(x,33,13,1.5,1.5,PAL.amber);
+  x.fillStyle='#E8833D';x.beginPath();x.moveTo(19,44);x.quadraticCurveTo(9,30,12,16);
+  x.quadraticCurveTo(19,10,26,16);x.quadraticCurveTo(29,30,19,44);x.fill();
+  x.strokeStyle='#C96A28';x.lineWidth=1;x.beginPath();x.moveTo(13,24);x.lineTo(24,23);x.moveTo(14,30);x.lineTo(23,29);x.stroke();
+  E(x,14,9,2.6,5.2,PAL.leaf,-0.5);E(x,19,7,2.8,6,PAL.leafDark,0.04);E(x,24,9,2.6,5,PAL.leaf,0.5);
+  R(x,14.5,19.5,3.2,3.6,'#fff');R(x,21.5,19.5,3.2,3.6,'#fff');R(x,15.5,21,1.8,1.8,PAL.ink);R(x,22.5,21,1.8,1.8,PAL.ink);
+  x.strokeStyle=PAL.ink;x.lineWidth=1.4;x.beginPath();x.moveTo(13.5,18);x.lineTo(18,19.6);x.moveTo(25.5,18);x.lineTo(21,19.6);x.stroke();
+  x.lineWidth=1.2;x.beginPath();x.arc(19.5,29.5,3,Math.PI+0.3,-0.3);x.stroke();
+  E(x,11,26,1.4,3.4,'#E8833D',-0.4);E(x,27,26,1.4,3.4,'#E8833D',0.4);return c;}
+function drawMower(){const [c,x]=cv(64,44);
+  x.strokeStyle=PAL.walnut;x.lineWidth=3;x.beginPath();x.moveTo(10,14);x.lineTo(2,4);x.lineTo(2,9);x.stroke();
+  RR(x,8,16,46,16,5,PAL.red);RR(x,8,16,46,6,5,'#E58264');R(x,48,20,12,10,PAL.walnut);
+  for(let i=0;i<3;i++)R(x,50+i*3.4,26,2,4,'#F7EFDF');
+  E(x,38,13,4.4,4.4,'#fff');E(x,47,13,4.4,4.4,'#fff');E(x,39.5,14,1.8,1.8,PAL.ink);E(x,48.5,14,1.8,1.8,PAL.ink);
+  E(x,16,36,7,7,PAL.ink);E(x,16,36,2.6,2.6,'#8a8a8a');E(x,46,38,5.4,5.4,PAL.ink);E(x,46,38,2,2,'#8a8a8a');
+  R(x,12,10,4,7,PAL.walnut2);return c;}
+function drawFence(){const [c,x]=cv(30,40);
+  R(x,3,14,24,4,PAL.walnut2);R(x,3,26,24,4,PAL.walnut2);
+  [5,13.5,22].forEach(p=>{RR(x,p,6,5,32,2,PAL.walnut);
+  x.fillStyle=PAL.walnut;x.beginPath();x.moveTo(p,7);x.lineTo(p+2.5,1);x.lineTo(p+5,7);x.fill();});return c;}
+function drawMud(){const [c,x]=cv(64,14);
+  E(x,32,9,30,5,PAL.mud);E(x,18,8,12,3.4,PAL.soilDark);E(x,44,9,10,3,PAL.soilDark);
+  E(x,26,6.5,3,1.2,'#8a6a4a');E(x,45,7,2.4,1,'#8a6a4a');return c;}
+function drawCabbage(){const [c,x]=cv(26,26);
+  E(x,13,13,11.5,11.5,PAL.leafDark);E(x,13,13,9,9,PAL.leaf);
+  x.strokeStyle=PAL.leafLight;x.lineWidth=1.6;x.beginPath();x.arc(13,13,6,0.4,2.6);x.stroke();
+  x.beginPath();x.arc(11,14,3,0,5);x.stroke();E(x,9,9,2.4,1.6,PAL.leafLight,-0.6);return c;}
+function drawPot(){const [c,x]=cv(24,24);
+  E(x,12,5,2.1,2.1,PAL.amber);for(let a=0;a<6;a++)E(x,12+Math.cos(a*1.05)*4,5+Math.sin(a*1.05)*4,1.8,1.8,'#fff');
+  R(x,10.5,8,3,3,PAL.leaf);x.fillStyle=PAL.terra;x.beginPath();x.moveTo(5,12);x.lineTo(19,12);x.lineTo(17,23);x.lineTo(7,23);x.fill();
+  R(x,4,10,16,3.4,PAL.terraDark);return c;}
+function drawBee(){const [c,x]=cv(16,14);
+  E(x,5.5,4,3.6,2.6,'#FFFFFFCC',-0.5);E(x,10.5,4,3.6,2.6,'#FFFFFFCC',0.5);
+  E(x,8,8.5,5.4,3.8,PAL.bee);R(x,5.4,5.4,2,6.4,PAL.ink);R(x,9.4,5.6,2,6,PAL.ink);
+  R(x,12.6,7.6,1.6,1.6,PAL.ink);E(x,2.4,9,1.2,0.8,PAL.ink);return c;}
+function drawHeart(on){const [c,x]=cv(14,13);const col=on?PAL.red:'#cdbd9f';
+  E(x,4.5,4.5,3.4,3.4,col);E(x,9.5,4.5,3.4,3.4,col);
+  x.fillStyle=col;x.beginPath();x.moveTo(1.4,6);x.lineTo(7,12.4);x.lineTo(12.6,6);x.fill();
+  E(x,4,3.6,1,1,'#FFD9CD');return c;}
+function drawGate(){const [c,x]=cv(96,96);
+  R(x,8,30,8,64,PAL.walnut);R(x,80,30,8,64,PAL.walnut);
+  x.strokeStyle=PAL.walnut;x.lineWidth=8;x.beginPath();x.arc(48,36,38,Math.PI,0);x.stroke();
+  RR(x,22,16,52,20,5,PAL.cream);x.strokeStyle='#D98A2B';x.lineWidth=2;x.strokeRect(24,18,48,16);
+  x.fillStyle=PAL.walnut;x.font='900 11px sans-serif';x.textAlign='center';x.fillText('THE PATCH',48,29);
+  for(let i=0;i<4;i++){const gx=24+i*14;E(x,gx,90,6,3.4,PAL.soil);
+    E(x,gx-3,84,1.6,3.6,PAL.leaf,-0.4);E(x,gx,83,1.8,4.2,PAL.leafDark);E(x,gx+3,84,1.6,3.6,PAL.leaf,0.4);}
+  return c;}
+
+/* paint the figures */
+function put(id, art, sx, sy, sw, sh){
+  const cnv = document.getElementById(id); if(!cnv) return;
+  const x = cnv.getContext('2d'); x.imageSmoothingEnabled = false;
+  x.drawImage(art, sx||0, sy||0, sw||art.width, sh||art.height, 0, 0, cnv.width, cnv.height);
+}
+put('cRabbit', drawRabbit(), 0, 0, 28, 26);
+put('cCarrot', drawCarrot(), 0, 0, 38, 48);
+put('cMower',  drawMower(),  0, 0, 64, 44);
+put('cFence',  drawFence(),  0, 0, 30, 40);
+put('cMud',    drawMud(),    0, 0, 64, 14);
+put('cCabbage',drawCabbage(),0, 0, 26, 26);
+put('cPot',    drawPot(),    0, 0, 24, 24);
+put('cBee',    drawBee(),    0, 0, 16, 14);
+put('cGate',   drawGate(),   0, 0, 96, 96);
+(function hearts(){
+  const cnv = document.getElementById('cHearts'); const x = cnv.getContext('2d');
+  x.imageSmoothingEnabled = false; const h = drawHeart(true);
+  for(let i=0;i<3;i++) x.drawImage(h, 0, 0, 14, 13, i*42, 2, 32, 30);
+})();
+
+/* scroll-driven horizontal track + parallax layers */
+(function(){
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const small = window.matchMedia('(max-width: 760px)').matches;
+  const scrolly = document.getElementById('scrolly');
+  const track = document.getElementById('track');
+  const layers = Array.from(document.querySelectorAll('.layer'));
+  const pb = document.getElementById('pb');
+  function onScroll(){
+    const total = document.documentElement.scrollHeight - innerHeight;
+    pb.style.width = (total > 0 ? (scrollY/total)*100 : 0) + '%';
+    if (reduced || small) return;
+    const rect = scrolly.getBoundingClientRect();
+    const span = scrolly.offsetHeight - innerHeight;
+    const p = Math.min(1, Math.max(0, -rect.top / span));
+    const dist = track.scrollWidth - innerWidth;
+    track.style.transform = `translateX(${-p*dist}px)`;
+    layers.forEach(l => { l.style.transform = `translateX(${-p*dist*parseFloat(l.dataset.depth)}px)`; });
+  }
+  addEventListener('scroll', onScroll, { passive: true });
+  addEventListener('resize', onScroll);
+  onScroll();
+})();
+</script>
+</body>
+</html>

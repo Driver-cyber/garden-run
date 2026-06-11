@@ -1,0 +1,882 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Garden Run — The Last Carrot</title>
+<meta name="description" content="A cozy slapstick side-scroller: one rabbit, one very paranoid carrot, one unstoppable lawnmower.">
+<link rel="icon" href='data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><path d="M20 4l4 2-2 4 4-1-2 5-12 14-6-6z" fill="%235FA052"/><path d="M10 28L24 12c1-3-3-7-6-6L4 22c-1 3 3 7 6 6z" fill="%23E8833D"/></svg>'>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,900&family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --cream:#F7EFDF; --cream-2:#EFE3CC; --walnut:#4A372A; --walnut-2:#6B5240;
+    --amber:#E8A33D; --amber-2:#D98A2B; --leaf:#5FA052; --soft-red:#D96C4F;
+    --display:"Fraunces",Georgia,serif; --ui:"Plus Jakarta Sans",system-ui,sans-serif;
+  }
+  *{box-sizing:border-box} html,body{height:100%}
+  body{
+    margin:0; background:var(--cream); color:var(--walnut); font-family:var(--ui);
+    display:flex; align-items:center; justify-content:center; min-height:100vh; padding:18px;
+    background-image:radial-gradient(circle at 18% 12%, #fff7 0 2px, transparent 3px),
+                     radial-gradient(circle at 82% 78%, #fff6 0 2px, transparent 3px);
+  }
+  #stage{position:relative; width:min(96vw,1100px); aspect-ratio:16/9; max-height:92vh;
+    border-radius:18px; overflow:hidden; background:#BDE3EE;
+    border:6px solid var(--walnut); box-shadow:0 10px 0 #3a2b20, 0 24px 50px #4a372a33;}
+  #game, #game canvas{position:absolute; inset:0; width:100%; height:100%;}
+
+  /* ---------- The bunker: the Last Carrot's porthole (signature element) ---------- */
+  #bunker{position:absolute; top:12px; right:12px; width:158px; z-index:30; pointer-events:none;
+    font-family:var(--ui); transition:transform .15s; transform-origin:top right;}
+  #bunker.hidden{display:none}
+  #bunker .porthole{position:relative; background:var(--walnut); border-radius:16px; padding:8px 8px 6px;
+    box-shadow:0 4px 0 #32251b, inset 0 0 0 2px #6b524055;}
+  #bunker .glass{position:relative; background:linear-gradient(#2a1e15,#3d2c1f); border-radius:10px;
+    overflow:hidden; border:3px solid var(--amber-2); height:96px;}
+  #bunker canvas{width:100%; height:100%; image-rendering:pixelated; display:block}
+  #bunker .label{display:flex; justify-content:space-between; align-items:center; margin-top:5px; padding:0 2px;}
+  #bunker .label b{color:var(--cream); font-size:9.5px; letter-spacing:.12em; text-transform:uppercase}
+  #bunker .gauge{height:7px; flex:1; margin-left:8px; background:#32251b; border-radius:99px; overflow:hidden}
+  #bunker .gauge i{display:block; height:100%; width:30%; background:linear-gradient(90deg,var(--amber),#F4C36A); transition:width .25s}
+  #bunker .lever{position:absolute; left:-13px; top:34px; width:14px; height:46px;}
+  #bunker .lever .stick{position:absolute; left:5px; bottom:6px; width:4px; height:34px; background:#8a6a50; border-radius:3px;
+    transform-origin:bottom center; transform:rotate(-24deg); transition:transform .12s cubic-bezier(.6,-0.4,.4,1.6);}
+  #bunker .lever .knob{position:absolute; left:-2px; top:-7px; width:12px; height:12px; background:var(--soft-red); border-radius:50%; box-shadow:0 2px 0 #a84f37;}
+  #bunker.yank .lever .stick{transform:rotate(26deg)}
+  #bunker.yank{transform:translateY(2px) rotate(.6deg)}
+  #bubble{position:absolute; top:100%; right:6px; margin-top:9px; max-width:230px; width:max-content;
+    background:var(--cream); color:var(--walnut); border:3px solid var(--walnut); border-radius:12px;
+    padding:7px 11px; font-weight:700; font-size:12.5px; line-height:1.3; opacity:0; transform:translateY(-6px) scale(.92);
+    transition:opacity .18s, transform .18s; box-shadow:0 3px 0 #4a372a44;}
+  #bubble:before{content:""; position:absolute; top:-9px; right:18px; border:6px solid transparent; border-bottom-color:var(--walnut); border-top:0;}
+  #bubble.show{opacity:1; transform:translateY(0) scale(1)}
+
+  /* ---------- Overlay screens ---------- */
+  .screen{position:absolute; inset:0; z-index:40; display:flex; align-items:center; justify-content:center;
+    background:linear-gradient(180deg,#f7efdfF2,#efe3ccF5); backdrop-filter:blur(2px); padding:20px;}
+  .screen.hidden{display:none}
+  .card{text-align:center; max-width:560px; width:100%;}
+  .seedpacket{background:var(--cream); border:4px solid var(--walnut); border-radius:16px; padding:26px 30px 24px;
+    box-shadow:0 8px 0 #4a372a33, inset 0 0 0 6px var(--cream), inset 0 0 0 8px var(--amber);}
+  .eyebrow{font-size:11px; font-weight:800; letter-spacing:.28em; text-transform:uppercase; color:var(--amber-2); margin:0 0 6px;}
+  h1.title{font-family:var(--display); font-weight:900; font-size:clamp(38px,7vw,60px); line-height:.95; margin:0 0 2px; color:var(--walnut);}
+  .subtitle{font-family:var(--display); font-weight:600; font-style:italic; font-size:clamp(15px,2.4vw,19px); color:var(--walnut-2); margin:4px 0 16px;}
+  .story{font-size:13.5px; line-height:1.55; color:var(--walnut-2); margin:0 auto 18px; max-width:430px;}
+  .btnrow{display:flex; gap:12px; justify-content:center; flex-wrap:wrap; margin-bottom:14px;}
+  button.btn, a.btn{font-family:var(--ui); font-weight:800; font-size:15px; cursor:pointer; text-decoration:none;
+    padding:12px 26px; border-radius:12px; border:3px solid var(--walnut); transition:transform .08s, box-shadow .08s; display:inline-block;}
+  .btn:focus-visible{outline:3px solid var(--amber); outline-offset:3px}
+  .btn-primary{background:var(--amber); color:var(--walnut); box-shadow:0 5px 0 var(--amber-2);}
+  .btn-primary:hover{transform:translateY(-1px)} .btn-primary:active{transform:translateY(3px); box-shadow:0 1px 0 var(--amber-2);}
+  .btn-ghost{background:var(--cream); color:var(--walnut); box-shadow:0 5px 0 #cdbd9f;}
+  .btn-ghost:active{transform:translateY(3px); box-shadow:0 1px 0 #cdbd9f;}
+  .keysline{font-size:12px; font-weight:600; color:var(--walnut-2);}
+  kbd{font-family:var(--ui); font-weight:800; font-size:11px; background:var(--cream-2); border:2px solid var(--walnut);
+    border-bottom-width:4px; border-radius:7px; padding:2px 7px; margin:0 1px;}
+  #endTitle{font-family:var(--display); font-weight:900; font-size:clamp(34px,6vw,52px); margin:0 0 4px;}
+  #endBlurb{font-size:14px; line-height:1.5; color:var(--walnut-2); margin:6px auto 18px; max-width:400px;}
+  .heroart{height:84px; margin:0 auto 10px; image-rendering:pixelated;}
+  #hud-tip{position:absolute; left:14px; bottom:10px; z-index:25; font-size:11px; font-weight:700; color:#fffae9;
+    text-shadow:0 1px 0 #4a372a; opacity:.85; pointer-events:none;}
+  #mutebtn{position:absolute; right:14px; bottom:10px; z-index:35; background:#4a372acc; color:var(--cream);
+    border:2px solid var(--cream); border-radius:10px; font-family:var(--ui); font-weight:800; font-size:11px;
+    padding:5px 10px; cursor:pointer;}
+  @media (prefers-reduced-motion: reduce){ *{transition:none !important; animation:none !important} }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="game"></div>
+
+  <!-- The Last Carrot's root-cellar bunker -->
+  <div id="bunker" class="hidden" aria-hidden="true">
+    <div class="porthole">
+      <div class="lever"><div class="stick"><div class="knob"></div></div></div>
+      <div class="glass"><canvas id="carrotCv" width="76" height="48"></canvas></div>
+      <div class="label"><b>The Carrot</b><span class="gauge"><i id="schemeFill"></i></span></div>
+    </div>
+    <div id="bubble"></div>
+  </div>
+
+  <!-- Title -->
+  <div id="title" class="screen">
+    <div class="card seedpacket">
+      <p class="eyebrow">Heirloom Variety · No. 1 of 1</p>
+      <h1 class="title">Garden Run</h1>
+      <p class="subtitle">one rabbit vs. the Last Carrot</p>
+      <canvas id="titleArt" class="heroart" width="220" height="56"></canvas>
+      <p class="story">The patch has one carrot left — and it knows it's next.
+        From a root-cellar bunker it yanks levers, drops flowerpots and rolls cabbages to stop you.
+        Outrun the mower. Reach the patch. Win lunch.</p>
+      <div class="btnrow">
+        <button class="btn btn-primary" id="playBtn">Hop to it</button>
+        <a class="btn btn-ghost" href="howtoplay.html">How to play</a>
+      </div>
+      <p class="keysline"><kbd>←</kbd><kbd>→</kbd> run &nbsp; <kbd>Space</kbd> jump &nbsp; <kbd>R</kbd> restart &nbsp; <kbd>M</kbd> mute</p>
+    </div>
+  </div>
+
+  <!-- End card -->
+  <div id="endcard" class="screen hidden">
+    <div class="card seedpacket">
+      <p class="eyebrow" id="endEyebrow">Harvest Report</p>
+      <h1 id="endTitle">The Patch!</h1>
+      <canvas id="endArt" class="heroart" width="220" height="56"></canvas>
+      <p id="endBlurb"></p>
+      <div class="btnrow">
+        <button class="btn btn-primary" id="againBtn">Run it again</button>
+        <a class="btn btn-ghost" href="howtoplay.html">How to play</a>
+      </div>
+    </div>
+  </div>
+
+  <div id="hud-tip" class="hidden">Don't stop hopping — the mower never does.</div>
+  <button id="mutebtn" class="hidden" aria-pressed="false">♪ Sound on</button>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
+<script>
+/* ================================================================
+   GARDEN RUN — one rabbit vs. The Last Carrot
+   All art is procedural & original. No assets, no build, no backend.
+   ================================================================ */
+'use strict';
+
+/* ---------------- tiny canvas painter (chunky low-res, scaled crisp) -------- */
+function cv(w, h){ const c = document.createElement('canvas'); c.width = w; c.height = h; const x = c.getContext('2d'); x.imageSmoothingEnabled = false; return [c, x]; }
+function E(x, cx, cy, rx, ry, col, rot){ x.fillStyle = col; x.beginPath(); x.ellipse(cx, cy, rx, ry, rot||0, 0, 7); x.fill(); }
+function R(x, a, b, w, h, col){ x.fillStyle = col; x.fillRect(a, b, w, h); }
+function RR(x, a, b, w, h, r, col){ x.fillStyle = col; x.beginPath(); x.roundRect(a, b, w, h, r); x.fill(); }
+
+const PAL = { fur:'#F4E9D6', furShade:'#E0CDAE', pink:'#F2B5A0', ink:'#3A2B20',
+  walnut:'#4A372A', walnut2:'#6B5240', amber:'#E8A33D', amber2:'#D98A2B',
+  leaf:'#5FA052', leafDark:'#47803E', leafLight:'#7FBF6E', soil:'#7A5538', soilDark:'#5E4029',
+  mud:'#6B4A2E', terra:'#C96F45', terraDark:'#A85636', red:'#D96C4F', sky:'#BDE3EE',
+  cream:'#F7EFDF', grassCut:'#8FCB7A', bee:'#F2C04B' };
+
+/* ---- rabbit (28x26), pose: 'run0'|'run1'|'run2'|'jump'|'dizzy' ---- */
+function drawRabbit(pose){
+  const [c,x] = cv(28,26);
+  const legA = pose==='run0'? [-4,4] : pose==='run2'? [4,-4] : [0,0];
+  const air = pose==='jump';
+  // tail
+  E(x, 4.5, 16.5, 3.2, 3.2, '#FFFDF6');
+  // back leg
+  E(x, 9+ (air?-1:legA[0]*0.5), 20.5+(air?-2:0), 4.4, 3.2, PAL.furShade, air?-0.5:legA[0]*0.06);
+  // body
+  E(x, 12.5, 15.5, 8.2, 6.4, PAL.fur, -0.12);
+  // front leg
+  E(x, 18+(air?2:legA[1]*0.5), 20.5+(air?-3:0), 3.4, 2.8, PAL.furShade, air?0.5:legA[1]*0.06);
+  // head
+  E(x, 21, 10.5, 5.6, 5.2, PAL.fur);
+  // ears (back, front)
+  E(x, 16.8, 3.0, 2.0, 6.0, PAL.furShade, -0.42);
+  E(x, 21.8, 2.2, 2.2, 6.4, PAL.fur, air?-0.5:-0.12);
+  E(x, 21.9, 3.0, 1.05, 4.2, PAL.pink, air?-0.5:-0.12);
+  // face
+  if(pose==='dizzy'){
+    x.strokeStyle = PAL.ink; x.lineWidth = 1;
+    x.beginPath(); x.moveTo(21.5,9); x.lineTo(24,11.5); x.moveTo(24,9); x.lineTo(21.5,11.5); x.stroke();
+  } else {
+    R(x, 22.8, 8.6, 2.0, 2.2, PAL.ink); R(x, 23.4, 9.0, 0.7, 0.7, '#fff'); // eye + glint
+  }
+  E(x, 26.3, 12.2, 1.2, 1.0, PAL.pink);             // nose
+  E(x, 14, 13.5, 2.6, 2.0, '#FFFDF6', -0.2);        // chest fluff
+  return c;
+}
+
+/* ---- the Last Carrot (bunker operator + parachute escape art) ---- */
+function drawCarrot(mood, t){ // mood: 'idle'|'yank'|'gloat'|'flee'
+  const [c,x] = cv(38,48);
+  const bob = Math.sin((t||0)/300)*1.2;
+  // bunker interior hints
+  R(x, 0, 40, 38, 8, '#241a12');
+  R(x, 3, 6, 4, 30, '#4a372a'); R(x, 31, 6, 4, 30, '#4a372a');
+  // levers wall
+  R(x, 5, 10, 2, 8, '#8a6a50'); E(x, 6, 9, 1.5, 1.5, PAL.red);
+  R(x, 32, 14, 2, 7, '#8a6a50'); E(x, 33, 13, 1.5, 1.5, PAL.amber);
+  // carrot body (tapered)
+  x.fillStyle = '#E8833D';
+  x.beginPath(); x.moveTo(19, 44); x.quadraticCurveTo(9, 30, 12, 16+bob);
+  x.quadraticCurveTo(19, 10+bob, 26, 16+bob); x.quadraticCurveTo(29, 30, 19, 44); x.fill();
+  x.strokeStyle = '#C96A28'; x.lineWidth = 1;
+  x.beginPath(); x.moveTo(13,24+bob); x.lineTo(24,23+bob); x.moveTo(14,30); x.lineTo(23,29); x.stroke();
+  // leaf tuft
+  E(x, 14, 9+bob, 2.6, 5.2, PAL.leaf, -0.5); E(x, 19, 7+bob, 2.8, 6, PAL.leafDark, 0.04); E(x, 24, 9+bob, 2.6, 5, PAL.leaf, 0.5);
+  // face
+  const angry = mood!=='gloat';
+  R(x, 14.5, 19.5+bob, 3.2, 3.6, '#fff'); R(x, 21.5, 19.5+bob, 3.2, 3.6, '#fff');
+  R(x, mood==='yank'?16.5:15.5, 21+bob, 1.8, 1.8, PAL.ink); R(x, mood==='yank'?23.5:22.5, 21+bob, 1.8, 1.8, PAL.ink);
+  if(angry){ x.strokeStyle = PAL.ink; x.lineWidth=1.4;
+    x.beginPath(); x.moveTo(13.5,18+bob); x.lineTo(18,19.6+bob); x.moveTo(25.5,18+bob); x.lineTo(21,19.6+bob); x.stroke(); }
+  // mouth
+  x.strokeStyle = PAL.ink; x.lineWidth = 1.2; x.beginPath();
+  if(mood==='gloat'){ x.arc(19.5, 26+bob, 3, 0.15, Math.PI-0.15); } else { x.arc(19.5, 29.5+bob, 3, Math.PI+0.3, -0.3); }
+  x.stroke();
+  // little arms
+  E(x, 11, 26+bob, 1.4, 3.4, '#E8833D', mood==='yank'? -1.1 : -0.4);
+  E(x, 27, 26+bob, 1.4, 3.4, '#E8833D', mood==='yank'? 1.1 : 0.4);
+  if(mood==='flee'){ // parachute
+    x.fillStyle = PAL.cream; x.beginPath(); x.arc(19,2,14,Math.PI,0); x.fill();
+    x.strokeStyle = PAL.walnut; x.beginPath(); x.moveTo(6,3); x.lineTo(13,14+bob); x.moveTo(32,3); x.lineTo(25,14+bob); x.stroke();
+  }
+  return c;
+}
+
+/* ---- the mower: googly-eyed, relentless, adorable ---- */
+function drawMower(frame){
+  const [c,x] = cv(64,44);
+  const j = frame? 1 : 0; // engine judder
+  // handle
+  x.strokeStyle = PAL.walnut; x.lineWidth = 3;
+  x.beginPath(); x.moveTo(10, 14+j); x.lineTo(2, 4+j); x.lineTo(2, 9+j); x.stroke();
+  // deck
+  RR(x, 8, 16+j, 46, 16, 5, PAL.red); RR(x, 8, 16+j, 46, 6, 5, '#E58264');
+  R(x, 48, 20+j, 12, 10, PAL.walnut); // blade housing snout
+  x.fillStyle = '#3a2b20'; // grille teeth (comic, not scary)
+  for(let i=0;i<3;i++) R(x, 50+i*3.4, 26+j, 2, 4, '#F7EFDF');
+  // googly eyes
+  E(x, 38, 13+j, 4.4, 4.4, '#fff'); E(x, 47, 13+j, 4.4, 4.4, '#fff');
+  E(x, 39.5+(frame?0.8:0), 14+j, 1.8, 1.8, PAL.ink); E(x, 48.5+(frame?0.8:0), 14+j, 1.8, 1.8, PAL.ink);
+  // wheels
+  E(x, 16, 36, 7, 7, PAL.ink); E(x, 16, 36, 2.6, 2.6, '#8a8a8a', frame?0.7:0);
+  E(x, 46, 38, 5.4, 5.4, PAL.ink); E(x, 46, 38, 2, 2, '#8a8a8a', frame?0.7:0);
+  // exhaust puff stub
+  R(x, 12, 10+j, 4, 7, PAL.walnut2);
+  return c;
+}
+
+/* ---- traps & props ---- */
+function drawFence(){ const [c,x] = cv(30,40);
+  R(x, 3, 14, 24, 4, PAL.walnut2); R(x, 3, 26, 24, 4, PAL.walnut2);
+  [5, 13.5, 22].forEach(px => { RR(x, px, 6, 5, 32, 2, PAL.walnut);
+    x.fillStyle = PAL.walnut; x.beginPath(); x.moveTo(px,7); x.lineTo(px+2.5,1); x.lineTo(px+5,7); x.fill(); });
+  return c; }
+function drawMud(){ const [c,x] = cv(64,14);
+  E(x, 32, 9, 30, 5, PAL.mud); E(x, 18, 8, 12, 3.4, PAL.soilDark); E(x, 44, 9, 10, 3, PAL.soilDark);
+  E(x, 26, 6.5, 3, 1.2, '#8a6a4a'); E(x, 45, 7, 2.4, 1, '#8a6a4a'); return c; }
+function drawCabbage(){ const [c,x] = cv(26,26);
+  E(x, 13, 13, 11.5, 11.5, PAL.leafDark); E(x, 13, 13, 9, 9, PAL.leaf);
+  x.strokeStyle = PAL.leafLight; x.lineWidth = 1.6;
+  x.beginPath(); x.arc(13,13,6,0.4,2.6); x.stroke(); x.beginPath(); x.arc(11,14,3,0,5); x.stroke();
+  E(x, 9, 9, 2.4, 1.6, PAL.leafLight, -0.6); return c; }
+function drawPot(){ const [c,x] = cv(24,24);
+  // daisy on top — falling flowerpot, a classic
+  E(x, 12, 5, 2.1, 2.1, PAL.amber);
+  for(let a=0;a<6;a++) E(x, 12+Math.cos(a*1.05)*4, 5+Math.sin(a*1.05)*4, 1.8, 1.8, '#fff');
+  R(x, 10.5, 8, 3, 3, PAL.leaf);
+  x.fillStyle = PAL.terra; x.beginPath(); x.moveTo(5,12); x.lineTo(19,12); x.lineTo(17,23); x.lineTo(7,23); x.fill();
+  R(x, 4, 10, 16, 3.4, PAL.terraDark); return c; }
+function drawShard(){ const [c,x] = cv(8,8); x.fillStyle = PAL.terra;
+  x.beginPath(); x.moveTo(1,7); x.lineTo(4,1); x.lineTo(7,6); x.fill(); return c; }
+function drawBee(){ const [c,x] = cv(16,14);
+  E(x, 5.5, 4, 3.6, 2.6, '#FFFFFFCC', -0.5); E(x, 10.5, 4, 3.6, 2.6, '#FFFFFFCC', 0.5);
+  E(x, 8, 8.5, 5.4, 3.8, PAL.bee); R(x, 5.4, 5.4, 2, 6.4, PAL.ink); R(x, 9.4, 5.6, 2, 6, PAL.ink);
+  R(x, 12.6, 7.6, 1.6, 1.6, PAL.ink); E(x, 2.4, 9, 1.2, 0.8, PAL.ink); return c; }
+function drawHeart(on){ const [c,x] = cv(14,13); const col = on? PAL.red : '#cdbd9f';
+  E(x, 4.5, 4.5, 3.4, 3.4, col); E(x, 9.5, 4.5, 3.4, 3.4, col);
+  x.fillStyle = col; x.beginPath(); x.moveTo(1.4,6); x.lineTo(7,12.4); x.lineTo(12.6,6); x.fill();
+  E(x, 4, 3.6, 1, 1, '#FFD9CD'); return c; }
+function drawGate(){ const [c,x] = cv(96,96);
+  // carrot-patch gate: arch + sign + planted rows
+  R(x, 8, 30, 8, 64, PAL.walnut); R(x, 80, 30, 8, 64, PAL.walnut);
+  x.strokeStyle = PAL.walnut; x.lineWidth = 8; x.beginPath(); x.arc(48, 36, 38, Math.PI, 0); x.stroke();
+  RR(x, 22, 16, 52, 20, 5, PAL.cream); x.strokeStyle = PAL.amber2; x.lineWidth = 2; x.strokeRect(24,18,48,16);
+  x.fillStyle = PAL.walnut; x.font = '900 11px sans-serif'; x.textAlign = 'center'; x.fillText('THE PATCH', 48, 29);
+  for(let i=0;i<4;i++){ const gx = 24+i*14; E(x, gx, 90, 6, 3.4, PAL.soil);
+    E(x, gx-3, 84, 1.6, 3.6, PAL.leaf, -0.4); E(x, gx, 83, 1.8, 4.2, PAL.leafDark); E(x, gx+3, 84, 1.6, 3.6, PAL.leaf, 0.4); }
+  return c; }
+function drawWarning(){ const [c,x] = cv(36,12); E(x, 18, 6, 16, 4.4, '#3a2b2055');
+  E(x, 18, 6, 10, 2.8, '#3a2b2066'); return c; }
+
+/* ---- scenery strips (tileable) ---- */
+function drawSkyTile(){ const [c,x] = cv(64,540);
+  const g = x.createLinearGradient(0,0,0,540); g.addColorStop(0,'#A9DAEC'); g.addColorStop(0.55,'#CFEAE2'); g.addColorStop(1,'#E4F2DC');
+  x.fillStyle = g; x.fillRect(0,0,64,540);
+  return c; }
+function drawSun(){ const [c,x] = cv(44,44);
+  E(x, 22, 22, 19, 19, '#FBE8A6'); E(x, 22, 22, 13, 13, '#FFF3C4'); E(x, 18, 18, 4, 4, '#FFFBE0'); return c; }
+function drawTreesTile(){ const [c,x] = cv(256,120);
+  [[30,70,40,34],[95,80,52,40],[165,68,42,32],[228,82,48,38]].forEach(([cx2,cy,rx,ry])=>{
+    E(x,cx2,cy,rx,ry,'#BBDCB2'); E(x,cx2-rx*0.4,cy-8,rx*0.55,ry*0.5,'#C9E5C0'); });
+  return c; }
+function drawCloudTile(){ const [c,x] = cv(256,90);
+  [[40,30,26],[150,52,32],[225,22,20]].forEach(([cx2,cy,r])=>{
+    E(x,cx2,cy,r,r*0.55,'#FFFFFFE0'); E(x,cx2-r*0.7,cy+4,r*0.6,r*0.4,'#FFFFFFE0'); E(x,cx2+r*0.7,cy+5,r*0.55,r*0.36,'#FFFFFFE0'); });
+  return c; }
+function drawHillsTile(){ const [c,x] = cv(256,90);
+  E(x, 60, 95, 95, 55, '#A8CFA0'); E(x, 200, 100, 110, 62, '#97C28E');
+  E(x, 40, 62, 3, 8, '#7FAF78'); E(x, 210, 58, 3.4, 9, '#7FAF78'); return c; }
+function drawHedgeTile(){ const [c,x] = cv(192,70);
+  for(let i=0;i<8;i++) E(x, i*26+10, 48+(i%2)*6, 18, 22, i%2? PAL.leafDark : '#528C46');
+  for(let i=0;i<5;i++) E(x, i*40+22, 40, 3, 3, '#E8A3CB'); return c; }
+function drawFlowerTile(){ const [c,x] = cv(160,30);
+  const cols = ['#E8A3CB', PAL.amber, '#E58264', '#fff'];
+  for(let i=0;i<6;i++){ const fx = i*26+8, fy = 18+(i%3)*3;
+    R(x, fx-0.8, fy, 1.6, 10, PAL.leafDark);
+    for(let a=0;a<5;a++) E(x, fx+Math.cos(a*1.25)*3, fy+Math.sin(a*1.25)*3, 2, 2, cols[i%4]);
+    E(x, fx, fy, 1.6, 1.6, PAL.walnut); }
+  return c; }
+function drawGrassTile(cut){ const [c,x] = cv(64,80);
+  R(x, 0, 0, 64, 80, cut? PAL.grassCut : '#6FB05C');
+  R(x, 0, 0, 64, 5, cut? '#9ED489' : '#7FBF6E');
+  if(cut){ for(let i=0;i<4;i++) R(x, i*16, 0, 8, 80, '#86C273'); // mow stripes
+    for(let i=0;i<7;i++) R(x, (i*9+3)%64, 2+(i%3), 1.6, 2, '#B8E3A6'); }
+  else { for(let i=0;i<10;i++){ const gx=(i*6.4+2)%64; R(x, gx, 1, 1.4, 4+(i%3)*2, '#8FD17A'); } }
+  R(x, 0, 26, 64, 54, PAL.soil);
+  for(let i=0;i<6;i++) R(x, (i*11+4)%64, 32+(i*7)%40, 3, 2, PAL.soilDark);
+  R(x, 0, 24, 64, 3, PAL.soilDark);
+  return c; }
+function drawSpark(){ const [c,x] = cv(5,5); R(x,0,0,5,5,'#fff'); return c; }
+function drawClip(){ const [c,x] = cv(4,6); R(x,0,0,4,6,PAL.leafLight); return c; }
+function drawPuff(){ const [c,x] = cv(12,12); E(x,6,6,5.4,5.4,'#FFFFFFD8'); return c; }
+
+/* ============================ AUDIO ============================ */
+const AudioKit = (() => {
+  let ctx = null, muted = false, musicTimer = null, step = 0;
+  const ensure = () => { if(!ctx) ctx = new (window.AudioContext||window.webkitAudioContext)(); if(ctx.state==='suspended') ctx.resume(); return ctx; };
+  function tone(f0, f1, dur, type, vol, when){ if(muted) return; const c = ensure();
+    const t = c.currentTime + (when||0);
+    const o = c.createOscillator(), g = c.createGain();
+    o.type = type; o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(Math.max(f1,1), t+dur);
+    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t+dur);
+    o.connect(g).connect(c.destination); o.start(t); o.stop(t+dur+0.02); }
+  const sfx = {
+    jump(){ tone(300, 620, 0.16, 'square', 0.045); },
+    land(){ tone(180, 90, 0.08, 'triangle', 0.05); },
+    hurt(){ tone(280, 70, 0.3, 'sawtooth', 0.06); tone(140, 60, 0.3, 'square', 0.04, 0.02); },
+    place(){ tone(220, 160, 0.1, 'square', 0.04); },
+    weapon(){ tone(520, 120, 0.25, 'sawtooth', 0.045); },
+    boing(){ tone(160, 520, 0.18, 'sine', 0.06); },
+    crash(){ tone(120, 40, 0.22, 'sawtooth', 0.055); },
+    bee(){ tone(330, 310, 0.4, 'sawtooth', 0.02); },
+    win(){ [523,659,784,1047].forEach((f,i)=>tone(f, f, 0.22, 'triangle', 0.06, i*0.13)); },
+    lose(){ [392,330,262,196].forEach((f,i)=>tone(f, f*0.94, 0.3, 'triangle', 0.06, i*0.18)); },
+    taunt(){ tone(700, 520, 0.07, 'square', 0.03); tone(820, 600, 0.07, 'square', 0.03, 0.09); }
+  };
+  const SCALE = [392, 440, 523, 587, 659, 784]; // G major-ish pentatonic, cozy
+  const PATTERN = [0,2,4,2, 1,3,5,3, 0,2,4,5, 4,2,1,2];
+  function startMusic(){ stopMusic(); if(muted) return; ensure();
+    musicTimer = setInterval(() => { if(muted) return;
+      const n = PATTERN[step % PATTERN.length];
+      tone(SCALE[n], SCALE[n], 0.22, 'triangle', 0.028);
+      if(step % 4 === 0) tone(SCALE[0]/2, SCALE[0]/2, 0.3, 'sine', 0.03);
+      step++; }, 270); }
+  function stopMusic(){ if(musicTimer){ clearInterval(musicTimer); musicTimer = null; } }
+  function setMuted(m){ muted = m; if(m) stopMusic(); else startMusic(); }
+  return { sfx, startMusic, stopMusic, setMuted, get muted(){ return muted; }, ensure };
+})();
+
+/* ====================================================================
+   VILLAIN BRAIN — the architecture rail.
+   A "brain" is any object implementing:
+       decide(state) -> Action[]
+   state: {
+     time, heroX, heroY, heroVX, heroGrounded, heroHealth,
+     mowerX, goalX, progress,            // progress = heroX / goalX, 0..1
+     energy, maxEnergy,                  // villain economy (game-owned)
+     cooldowns: { obstacle, weapon },    // ms remaining; <=0 means ready
+     activeTraps: [{kind, x}]
+   }
+   Action: { slot:'obstacle'|'weapon', kind:'fence'|'mud'|'cabbage'|'pot'|'bees', x }
+   The GAME validates energy & cooldowns and executes what it can afford;
+   the brain only chooses. Swap CarrotBrain for a networked human brain
+   later (decide() fed by remote input) and nothing else changes.
+   ==================================================================== */
+class CarrotBrain {
+  constructor(){ this.lastKind = ''; this.rng = Math.random; }
+  decide(s){
+    const acts = [];
+    const gap = s.heroX - s.mowerX;            // breathing room the hero has
+    const nearGoal = s.goalX - s.heroX < 460;  // final sprint stays fair
+    if (nearGoal) return acts;
+
+    // --- obstacles: stall the rabbit into the mower ---
+    if (s.cooldowns.obstacle <= 0 && s.energy >= CarrotBrain.COST.obstacle) {
+      const eagerness = gap > 680 ? 0.95 : gap > 430 ? 0.6 : 0.22;
+      if (this.rng() < eagerness) {
+        let kind;
+        const speedy = Math.abs(s.heroVX) > 200;
+        const roll = this.rng();
+        if (speedy && roll < 0.45 && this.lastKind !== 'mud') kind = 'mud';
+        else if (s.progress > 0.2 && roll < 0.7 && this.lastKind !== 'cabbage') kind = 'cabbage';
+        else kind = this.lastKind === 'fence' ? (roll < 0.5 ? 'mud' : 'cabbage') : 'fence';
+        const x = kind === 'cabbage' ? s.heroX + 760
+                : kind === 'mud'     ? s.heroX + 380 + this.rng()*120
+                :                      s.heroX + 470 + this.rng()*160;
+        // don't stack on an existing trap
+        if (!s.activeTraps.some(t => Math.abs(t.x - x) < 90)) {
+          acts.push({ slot:'obstacle', kind, x });
+          this.lastKind = kind;
+        }
+      }
+    }
+
+    // --- weapons: rarer, telegraphed, mean-but-fair ---
+    if (s.cooldowns.weapon <= 0 && s.energy >= CarrotBrain.COST.weapon && s.progress > 0.1) {
+      const wantsIt = (s.heroHealth >= 2 || gap > 760) && this.rng() < 0.8;
+      if (wantsIt) {
+        if (s.heroGrounded && this.rng() < 0.6) {
+          acts.push({ slot:'weapon', kind:'pot', x: s.heroX + Math.max(120, s.heroVX * 0.85) });
+        } else {
+          acts.push({ slot:'weapon', kind:'bees', x: s.heroX + 540 });
+        }
+      }
+    }
+    return acts;
+  }
+}
+CarrotBrain.COST = { obstacle: 16, weapon: 50 };
+CarrotBrain.COOLDOWN = { obstacle: 1400, weapon: 6500 };
+
+const TAUNTS = {
+  fence:  ["Fence-tastic, isn't it?!", "You shall not SALAD!", "Pickets! My beautiful pickets!"],
+  mud:    ["Mud to my delight!", "Slow and steady loses, bun!", "Enjoy the spa, fluffball!"],
+  cabbage:["ROLL OUT, cousin Cabbage!", "Cabbage incoming! He volunteered!", "Leaf him alone? NEVER!"],
+  pot:    ["Heads up, whiskers!", "Special delivery!", "I always say it with flowers!"],
+  bees:   ["My beeees! Fly, my pretties!", "Bzz bzz, bunny!", "They work for honey. And ME!"],
+  ambient:["Not MY patch! Not TODAY!", "Root root ROOT for me!", "I am NOT lunch!", "Lettuce pray you trip!"]
+};
+
+/* ============================ GAME ============================ */
+const W = 960, H = 540, GROUND_Y = 458, LEVEL_LEN = 9200;
+
+class GameScene extends Phaser.Scene {
+  constructor(){ super('game'); }
+
+  create(){
+    this.buildTexturesOnce();
+    const ph = this.physics;
+
+    // --- state ---
+    this.over = false; this.won = false;
+    this.health = 3; this.invulnUntil = 0;
+    this.inMud = false; this.coyoteUntil = 0; this.jumpBufferedUntil = 0; this.wasGrounded = false;
+    this.villain = {
+      brain: new CarrotBrain(),                 // <- swappable brain (see interface above)
+      energy: 40, maxEnergy: 100,
+      cooldowns: { obstacle: 0, weapon: 0 },
+      thinkEvery: 450, nextThink: 800, lastTauntAt: -9999
+    };
+
+    // --- scenery (parallax) ---
+    this.add.tileSprite(W/2, H/2, W, H, 'sky').setScrollFactor(0);
+    this.add.image(112, 84, 'sun').setScrollFactor(0).setScale(1.6).setAlpha(0.95);
+    this.clouds = this.add.tileSprite(W/2, 92, W, 90, 'clouds').setScrollFactor(0).setAlpha(0.9);
+    this.trees  = this.add.tileSprite(W/2, GROUND_Y-160, W, 120, 'trees').setScrollFactor(0);
+    this.hills  = this.add.tileSprite(W/2, GROUND_Y-96, W, 90, 'hills').setScrollFactor(0);
+    this.hedge  = this.add.tileSprite(W/2, GROUND_Y-32, W, 70, 'hedge').setScrollFactor(0);
+    this.grass  = this.add.tileSprite(W/2, GROUND_Y+40, W, 80, 'grass').setScrollFactor(0);
+    this.cut    = this.add.tileSprite(0, GROUND_Y+40, 10, 80, 'grasscut').setOrigin(1, 0.5); // grows behind mower
+    this.flowers= this.add.tileSprite(W/2, GROUND_Y-12, W, 30, 'flowers').setScrollFactor(0).setAlpha(0.95);
+
+    // --- world & ground ---
+    ph.world.setBounds(0, -200, LEVEL_LEN + 600, H + 260);
+    this.cameras.main.setBounds(0, 0, LEVEL_LEN + 400, H);
+    const ground = this.add.rectangle(LEVEL_LEN/2, GROUND_Y + 50, LEVEL_LEN + 1200, 100, 0, 0);
+    ph.add.existing(ground, true);
+    this.ground = ground;
+
+    // --- goal gate ---
+    this.gate = this.add.image(LEVEL_LEN, GROUND_Y - 46, 'gate').setScale(1.3);
+    this.goalX = LEVEL_LEN - 10;
+
+    // --- hero ---
+    this.hero = ph.add.sprite(140, GROUND_Y - 40, 'run1').setScale(1.7);
+    this.hero.body.setSize(16, 18).setOffset(7, 7);
+    this.hero.setMaxVelocity(265, 900).setDragX(1400);
+    this.hero.body.setGravityY(1450);
+    ph.add.collider(this.hero, ground, () => {});
+    this.anims.create({ key:'run', frames:[{key:'run0'},{key:'run1'},{key:'run2'},{key:'run1'}], frameRate: 13, repeat: -1 });
+
+    // --- mower (the wall) ---
+    this.mower = this.add.sprite(-260, GROUND_Y - 30, 'mower0').setScale(1.8);
+    this.anims.create({ key:'mow', frames:[{key:'mower0'},{key:'mower1'}], frameRate: 12, repeat: -1 });
+    this.mower.play('mow');
+    this.mowerSpeed = 132;
+    this.clipEmitter = this.add.particles(0, 0, 'clip', {
+      speedX:{min:60,max:200}, speedY:{min:-220,max:-60}, gravityY: 700, rotate:{min:0,max:360},
+      lifespan: 700, quantity: 2, frequency: 45, alpha:{start:1,end:0.2}, follow: this.mower, followOffset:{x:54,y:18} });
+
+    // --- trap groups ---
+    this.fences  = ph.add.staticGroup();
+    this.muds    = ph.add.staticGroup();
+    this.cabbages= ph.add.group();
+    this.pots    = ph.add.group();
+    this.bees    = ph.add.group();
+    ph.add.collider(this.hero, this.fences);
+    ph.add.collider(this.cabbages, ground);
+    ph.add.collider(this.hero, this.cabbages, (h, cab) => {
+      if (h.body.bottom <= cab.body.top + 10 && h.body.velocity.y >= 0) {
+        h.setVelocityY(-430); AudioKit.sfx.boing(); this.pop('BOING!', cab.x, cab.y - 30, '#47803E');
+      }});
+    ph.add.collider(this.pots, ground, (pot) => this.smashPot(pot));
+    ph.add.overlap(this.hero, this.pots, (h, pot) => { if(pot.body.velocity.y > 40){ this.smashPot(pot); this.hurt('pot'); } });
+    ph.add.overlap(this.hero, this.bees, (h, bee) => { this.poof(bee.x, bee.y); bee.destroy(); this.hurt('bees'); });
+
+    // --- particles for hits/poofs ---
+    this.sparker = this.add.particles(0, 0, 'spark', { emitting:false, speed:{min:60,max:240}, lifespan:500,
+      gravityY:500, scale:{start:1.2,end:0}, rotate:{min:0,max:360} });
+    this.puffer = this.add.particles(0, 0, 'puff', { emitting:false, speed:{min:30,max:120}, lifespan:600,
+      scale:{start:1,end:0.1}, alpha:{start:0.9,end:0} });
+    this.shardEmitter = this.add.particles(0, 0, 'shard', { emitting:false, speed:{min:80,max:220},
+      gravityY:800, lifespan:600, rotate:{min:0,max:360} });
+
+    // --- camera ---
+    this.cameras.main.startFollow(this.hero, true, 0.12, 0.12);
+    this.cameras.main.setFollowOffset(-150, 60);
+
+    // --- HUD (in-canvas) ---
+    this.hearts = [];
+    for(let i=0;i<3;i++) this.hearts.push(this.add.image(26 + i*28, 26, 'heart1').setScrollFactor(0).setScale(1.6).setDepth(50));
+    this.trackG = this.add.graphics().setScrollFactor(0).setDepth(50);
+    this.trackRabbit = this.add.image(0, 0, 'run1').setScrollFactor(0).setScale(0.8).setDepth(51);
+    this.trackMower  = this.add.image(0, 0, 'mower0').setScrollFactor(0).setScale(0.5).setDepth(51);
+
+    // --- input ---
+    this.cursors = this.input.keyboard.createCursorKeys();
+    this.keys = this.input.keyboard.addKeys('A,D,W,SPACE,R,M');
+    this.input.keyboard.on('keydown-M', () => window.toggleMute());
+    this.input.keyboard.on('keydown-R', () => { if(!this.transitioning) this.restart(); });
+
+    // reduced motion: no screen shake
+    this.allowShake = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    bunkerSay(pick(TAUNTS.ambient), 'idle');
+  }
+
+  buildTexturesOnce(){
+    if (this.textures.exists('run0')) return;
+    const T = this.textures;
+    T.addCanvas('run0', drawRabbit('run0')); T.addCanvas('run1', drawRabbit('run1'));
+    T.addCanvas('run2', drawRabbit('run2')); T.addCanvas('jump', drawRabbit('jump'));
+    T.addCanvas('dizzy', drawRabbit('dizzy'));
+    T.addCanvas('mower0', drawMower(0)); T.addCanvas('mower1', drawMower(1));
+    T.addCanvas('fence', drawFence()); T.addCanvas('mud', drawMud());
+    T.addCanvas('cabbage', drawCabbage()); T.addCanvas('pot', drawPot());
+    T.addCanvas('bee', drawBee()); T.addCanvas('gate', drawGate());
+    T.addCanvas('warning', drawWarning()); T.addCanvas('shard', drawShard());
+    T.addCanvas('heart1', drawHeart(true)); T.addCanvas('heart0', drawHeart(false));
+    T.addCanvas('sky', drawSkyTile()); T.addCanvas('sun', drawSun()); T.addCanvas('clouds', drawCloudTile());
+    T.addCanvas('hills', drawHillsTile()); T.addCanvas('trees', drawTreesTile()); T.addCanvas('hedge', drawHedgeTile());
+    T.addCanvas('flowers', drawFlowerTile());
+    T.addCanvas('grass', drawGrassTile(false)); T.addCanvas('grasscut', drawGrassTile(true));
+    T.addCanvas('spark', drawSpark()); T.addCanvas('clip', drawClip()); T.addCanvas('puff', drawPuff());
+  }
+
+  /* ---------- villain execution: validates what the brain asked for ---------- */
+  villainTick(time, dtMs){
+    const v = this.villain;
+    v.cooldowns.obstacle -= dtMs; v.cooldowns.weapon -= dtMs;
+    const progress = Phaser.Math.Clamp(this.hero.x / this.goalX, 0, 1);
+    v.energy = Math.min(v.maxEnergy, v.energy + (6 + progress * 5) * dtMs/1000);
+    window.setScheme(v.energy / v.maxEnergy);
+    if (time < v.nextThink) return;
+    v.nextThink = time + v.thinkEvery;
+
+    const state = {
+      time, heroX: this.hero.x, heroY: this.hero.y, heroVX: this.hero.body.velocity.x,
+      heroGrounded: this.hero.body.blocked.down, heroHealth: this.health,
+      mowerX: this.mower.x, goalX: this.goalX, progress,
+      energy: v.energy, maxEnergy: v.maxEnergy,
+      cooldowns: { ...v.cooldowns },
+      activeTraps: [
+        ...this.fences.getChildren().map(f => ({kind:'fence', x:f.x})),
+        ...this.muds.getChildren().map(m => ({kind:'mud', x:m.x})),
+        ...this.cabbages.getChildren().map(c => ({kind:'cabbage', x:c.x}))
+      ]
+    };
+    for (const act of (v.brain.decide(state) || [])) {
+      const cost = CarrotBrain.COST[act.slot], cdLeft = v.cooldowns[act.slot];
+      if (cost == null || cdLeft > 0 || v.energy < cost) continue;       // can't afford: skip
+      if (act.x < this.mower.x + 200 || act.x > this.goalX - 140) continue; // sanity bounds
+      v.energy -= cost; v.cooldowns[act.slot] = CarrotBrain.COOLDOWN[act.slot];
+      this.spawnTrap(act);
+      if (time - v.lastTauntAt > 2600) { v.lastTauntAt = time; bunkerSay(pick(TAUNTS[act.kind] || TAUNTS.ambient), 'yank'); }
+      else window.bunkerYank();
+    }
+  }
+
+  spawnTrap(act){
+    const drop = (img) => { img.setAlpha(0); img.y -= 26;
+      this.tweens.add({ targets: img, alpha: 1, y: img.y + 26, duration: 240, ease: 'Bounce.Out' }); };
+    if (act.kind === 'fence'){
+      const f = this.fences.create(act.x, GROUND_Y - 26, 'fence').setScale(1.5);
+      f.refreshBody(); f.body.setSize(28, 52).setOffset((f.displayWidth-28)/2, f.displayHeight-52+6);
+      drop(f); AudioKit.sfx.place(); this.poof(act.x, GROUND_Y - 10);
+    } else if (act.kind === 'mud'){
+      const m = this.muds.create(act.x, GROUND_Y - 2, 'mud').setScale(1.7);
+      m.refreshBody(); m.body.setSize(100, 16).setOffset((m.displayWidth-100)/2, m.displayHeight-18);
+      drop(m); AudioKit.sfx.place();
+    } else if (act.kind === 'cabbage'){
+      const c = this.physics.add.sprite(act.x, GROUND_Y - 120, 'cabbage').setScale(1.6);
+      c.body.setCircle(11, 2, 2); c.setVelocityX(-125); c.setBounce(0.25);
+      c.bornAt = this.time.now; this.cabbages.add(c); AudioKit.sfx.place();
+    } else if (act.kind === 'pot'){
+      const wx = Phaser.Math.Clamp(act.x, this.hero.x + 90, this.goalX - 120);
+      const warn = this.add.image(wx, GROUND_Y - 3, 'warning').setScale(1.4).setAlpha(0.001);
+      this.tweens.add({ targets: warn, alpha: 1, duration: 140, yoyo: true, repeat: 4 });
+      AudioKit.sfx.weapon();
+      this.time.delayedCall(720, () => { warn.destroy(); if(this.over) return;
+        const p = this.physics.add.sprite(wx, this.cameras.main.scrollY - 30, 'pot').setScale(1.6);
+        p.body.setSize(16, 16).setOffset(4, 6); p.body.setGravityY(900); this.pots.add(p); });
+    } else if (act.kind === 'bees'){
+      const b = this.physics.add.sprite(act.x, GROUND_Y - 250, 'bee').setScale(1.6);
+      b.body.setAllowGravity(false); b.bornAt = this.time.now; this.bees.add(b);
+      AudioKit.sfx.bee(); 
+    }
+  }
+
+  smashPot(pot){ if(!pot.active) return; this.shardEmitter.explode(8, pot.x, pot.y); AudioKit.sfx.crash(); pot.destroy(); }
+  poof(x, y){ this.puffer.explode(6, x, y); }
+  pop(txt, x, y, color){
+    const t = this.add.text(x, y, txt, { fontFamily:'"Plus Jakarta Sans",sans-serif', fontSize:'17px',
+      fontStyle:'800', color: color || '#4A372A', stroke:'#F7EFDF', strokeThickness: 4 }).setOrigin(0.5).setDepth(60);
+    this.tweens.add({ targets:t, y:y-36, alpha:0, duration:750, ease:'Cubic.Out', onComplete:()=>t.destroy() });
+  }
+
+  hurt(src){
+    if (this.over || this.time.now < this.invulnUntil) return;
+    this.invulnUntil = this.time.now + 1300;
+    this.health--; AudioKit.sfx.hurt();
+    this.pop(pick(['OUCH!','OOF!','YIKES!']), this.hero.x, this.hero.y - 44, '#D96C4F');
+    this.hearts.forEach((h,i)=>h.setTexture(i < this.health ? 'heart1' : 'heart0'));
+    this.hero.setVelocity(-170, -300);
+    if (this.allowShake) this.cameras.main.shake(140, 0.004);
+    this.tweens.add({ targets: this.hero, alpha: 0.25, duration: 90, yoyo: true, repeat: 6, onComplete: ()=>this.hero.setAlpha(1) });
+    if (this.health <= 0) this.lose('dizzy');
+  }
+
+  update(time, deltaRaw){
+    if (this.over) return;
+    const dt = Math.min(deltaRaw, 50);
+    const hero = this.hero, body = hero.body;
+
+    /* mud check */
+    this.inMud = this.physics.overlap(hero, this.muds);
+
+    /* hero control */
+    const left  = this.cursors.left.isDown  || this.keys.A.isDown;
+    const right = this.cursors.right.isDown || this.keys.D.isDown;
+    const jumpKey = this.cursors.up.isDown || this.keys.W.isDown || this.keys.SPACE.isDown;
+    const jumpPressed = Phaser.Input.Keyboard.JustDown(this.cursors.up) ||
+                        Phaser.Input.Keyboard.JustDown(this.keys.W) ||
+                        Phaser.Input.Keyboard.JustDown(this.keys.SPACE);
+    const speedCap = this.inMud ? 118 : 265;
+    hero.setMaxVelocity(speedCap, 900);
+    const accel = this.inMud ? 900 : 1700;
+    if (right) body.setAccelerationX(accel);
+    else if (left) body.setAccelerationX(-accel);
+    else body.setAccelerationX(0);
+    if (left) hero.setFlipX(true); if (right) hero.setFlipX(false);
+
+    const grounded = body.blocked.down;
+    if (grounded) this.coyoteUntil = time + 95;
+    if (jumpPressed) this.jumpBufferedUntil = time + 130;
+    if (this.jumpBufferedUntil > time && this.coyoteUntil > time){
+      this.jumpBufferedUntil = 0; this.coyoteUntil = 0;
+      hero.setVelocityY(this.inMud ? -420 : -560); AudioKit.sfx.jump();
+      this.poof(hero.x, hero.y + 18);
+    }
+    if (!jumpKey && body.velocity.y < -200) hero.setVelocityY(-200); // variable jump height
+    if (grounded && !this.wasGrounded){ AudioKit.sfx.land(); this.poof(hero.x - 4, hero.y + 20); }
+    this.wasGrounded = grounded;
+
+    /* hero animation */
+    if (!grounded){ hero.anims.stop(); hero.setTexture('jump'); }
+    else if (Math.abs(body.velocity.x) > 25){ hero.anims.play('run', true); }
+    else { hero.anims.stop(); hero.setTexture('run1'); }
+    if (this.inMud && grounded && time % 280 < 20) this.poof(hero.x, hero.y + 20);
+
+    /* mower advance: never stops; rubber-bands so the race stays a race */
+    const progress = Phaser.Math.Clamp(hero.x / this.goalX, 0, 1);
+    let speed = 142 + progress * 78;
+    const gap = hero.x - this.mower.x;
+    if (gap > 700) speed += Math.min(230, (gap - 700) * 0.42);
+    if (gap < 240) speed *= 0.86;                  // a sliver of mercy, still coming
+    this.mower.x += (speed * dt) / 1000;
+    this.mower.y = GROUND_Y - 30 + Math.sin(time/55) * 1.2;
+    this.cut.x = this.mower.x + 40; this.cut.width = Math.max(10, this.mower.x + 40);
+
+    /* mower eats traps it reaches (it mows everything) */
+    const eats = (g) => g.getChildren().forEach(o => { if (o.x < this.mower.x + 50){ this.poof(o.x, o.y); this.sparker.explode(4, o.x, o.y); o.destroy(); } });
+    eats(this.fences); eats(this.muds); eats(this.cabbages);
+
+    /* caught by the wall? */
+    if (this.mower.x + 50 >= hero.x - 6) return this.lose('mowed');
+
+    /* cabbages & bees behavior */
+    this.cabbages.getChildren().forEach(c => { c.rotation -= dt/300;
+      if (time - c.bornAt > 9000 || c.x < this.mower.x + 60) { this.poof(c.x, c.y); c.destroy(); } });
+    this.bees.getChildren().forEach(b => {
+      const age = time - b.bornAt;
+      if (age > 4200){ this.poof(b.x, b.y); b.destroy(); return; }
+      const dx = hero.x - b.x, dy = (hero.y - 8) - b.y, d = Math.hypot(dx, dy) || 1;
+      const sp = 188;
+      b.setVelocity(dx/d*sp, dy/d*sp + Math.sin(time/70)*60);
+      b.setFlipX(dx < 0);
+    });
+    this.pots.getChildren().forEach(p => p.rotation = Math.sin(time/90) * 0.12);
+
+    /* scenery parallax */
+    const sx = this.cameras.main.scrollX;
+    this.clouds.tilePositionX = sx * 0.12 + time * 0.004;
+    this.trees.tilePositionX = sx * 0.16; this.hills.tilePositionX = sx * 0.28;
+    this.hedge.tilePositionX = sx * 0.5;
+    this.flowers.tilePositionX = sx * 0.8;
+    this.grass.tilePositionX = sx;
+
+    /* villain brain */
+    this.villainTick(time, dt);
+
+    /* HUD progress track */
+    this.drawTrack(progress);
+
+    /* goal */
+    if (hero.x >= this.goalX - 26) this.win();
+  }
+
+  drawTrack(progress){
+    const g = this.trackG; g.clear();
+    const tx = 200, tw = W - 400, ty = 22;
+    g.fillStyle(0x4A372A, 0.55).fillRoundedRect(tx-6, ty-6, tw+12, 12, 6);
+    g.fillStyle(0xF7EFDF, 0.9).fillRoundedRect(tx, ty-2, tw, 4, 2);
+    g.fillStyle(0xE8A33D, 1).fillRoundedRect(tx, ty-2, tw*progress, 4, 2);
+    // gate tick
+    g.fillStyle(0x5FA052, 1).fillRect(tx+tw-2, ty-7, 4, 14);
+    this.trackRabbit.setPosition(tx + tw*progress, ty);
+    this.trackMower.setPosition(tx + tw*Phaser.Math.Clamp(this.mower.x/this.goalX,0,1), ty+1);
+  }
+
+  win(){
+    if (this.over) return; this.over = true; this.won = true;
+    AudioKit.sfx.win(); AudioKit.stopMusic();
+    this.hero.setAccelerationX(0); this.hero.setVelocityX(0);
+    this.physics.pause(); this.clipEmitter.stop();
+    // celebratory hop
+    this.tweens.add({ targets: this.hero, y: this.hero.y - 36, duration: 240, yoyo: true, repeat: 3, ease:'Quad.Out' });
+    for(let i=0;i<3;i++) this.time.delayedCall(i*180, ()=>this.sparker.explode(10, this.gate.x - 30 + i*30, this.gate.y - 40));
+    this.time.delayedCall(1100, () => showEnd(true));
+  }
+
+  lose(how){
+    if (this.over) return; this.over = true;
+    AudioKit.sfx.lose(); AudioKit.stopMusic();
+    this.physics.pause(); this.clipEmitter.stop();
+    this.hero.setTexture('dizzy');
+    if (how === 'mowed'){
+      // comic fluff-poof, strictly G-rated: rabbit boings skyward off-screen
+      this.puffer.explode(14, this.hero.x, this.hero.y);
+      this.tweens.add({ targets: this.hero, y: this.hero.y - 420, angle: 360, duration: 800, ease: 'Quad.In' });
+    } else {
+      this.tweens.add({ targets: this.hero, angle: 90, y: this.hero.y + 10, duration: 350, ease: 'Bounce.Out' });
+      const stars = this.add.text(this.hero.x, this.hero.y - 40, '✶ ✶ ✶', {fontSize:'16px', color:'#E8A33D'}).setOrigin(0.5);
+      this.tweens.add({ targets: stars, angle: 360, duration: 1200, repeat: 1 });
+    }
+    this.time.delayedCall(1200, () => showEnd(false, how));
+  }
+
+  restart(){
+    this.transitioning = true;
+    hideOverlays();
+    this.scene.restart();
+    this.transitioning = false;
+    if (!AudioKit.muted) AudioKit.startMusic();
+  }
+}
+
+/* ============================ DOM GLUE ============================ */
+const pick = (arr) => arr[(Math.random() * arr.length) | 0];
+const $ = (s) => document.querySelector(s);
+
+let game = null; window.game = null;
+function bootGame(){
+  if (game) return;
+  game = window.game = new Phaser.Game({
+    type: Phaser.AUTO, parent: 'game', width: W, height: H, pixelArt: true,
+    backgroundColor: '#BDE3EE',
+    scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
+    physics: { default: 'arcade', arcade: { gravity: { y: 0 }, debug: false } },
+    scene: [GameScene]
+  });
+}
+
+/* bunker widget */
+const bunkerEl = $('#bunker'), bubbleEl = $('#bubble'), carrotCtx = $('#carrotCv').getContext('2d');
+carrotCtx.imageSmoothingEnabled = false;
+let carrotMood = 'idle', moodUntil = 0;
+function paintCarrot(ts){
+  if (ts > moodUntil && carrotMood !== 'idle') carrotMood = 'idle';
+  carrotCtx.clearRect(0, 0, 76, 48);
+  const art = drawCarrot(carrotMood, ts);
+  carrotCtx.drawImage(art, 0, 0, 38, 48, 15, -6, 46, 58); // whole operator, tuft and all
+  requestAnimationFrame(paintCarrot);
+}
+requestAnimationFrame(paintCarrot);
+
+let bubbleTimer = null;
+function bunkerSay(line, mood){
+  window.bunkerYank();
+  if (mood){ carrotMood = mood; moodUntil = performance.now() + 900; }
+  bubbleEl.textContent = line; bubbleEl.classList.add('show');
+  AudioKit.sfx.taunt();
+  clearTimeout(bubbleTimer);
+  bubbleTimer = setTimeout(() => bubbleEl.classList.remove('show'), 2400);
+}
+window.bunkerYank = function(){
+  bunkerEl.classList.add('yank'); carrotMood = 'yank'; moodUntil = performance.now() + 500;
+  setTimeout(() => bunkerEl.classList.remove('yank'), 170);
+};
+window.setScheme = (f) => { $('#schemeFill').style.width = `${Math.round(f*100)}%`; };
+
+/* overlays */
+function hideOverlays(){ $('#title').classList.add('hidden'); $('#endcard').classList.add('hidden');
+  bunkerEl.classList.remove('hidden'); $('#hud-tip').classList.remove('hidden'); $('#mutebtn').classList.remove('hidden'); }
+function showEnd(won, how){
+  const card = $('#endcard');
+  $('#endEyebrow').textContent = won ? 'Harvest report · victory' : 'Harvest report · defeat';
+  $('#endTitle').textContent = won ? 'The Patch is Yours!' : how === 'mowed' ? 'Mulched!' : 'Too Dizzy to Hop';
+  $('#endBlurb').textContent = won
+    ? 'Hop hooray! The Last Carrot bailed out of its bunker and parachuted off toward the compost heap, shouting about a rematch.'
+    : how === 'mowed'
+      ? 'The mower never stopped. Somewhere underground, a very smug carrot is doing a little dance.'
+      : 'Stars and whiskers everywhere. The Last Carrot lives to scheme another day.';
+  drawEndArt($('#endArt'), won);
+  card.classList.remove('hidden');
+  if (won){ carrotMood = 'flee'; moodUntil = performance.now() + 6000; }
+  else { carrotMood = 'gloat'; moodUntil = performance.now() + 6000; bunkerSay(pick(["Told you! TOLD you!", "The patch is MINE!", "Beaten by a vegetable!"]), 'gloat'); }
+}
+function drawTitleArt(canvas){
+  const x = canvas.getContext('2d'); x.imageSmoothingEnabled = false;
+  x.clearRect(0,0,canvas.width,canvas.height);
+  x.drawImage(drawRabbit('run0'), 20, 8, 56, 52);
+  x.drawImage(drawMower(0), -34, 6, 96, 66);
+  x.drawImage(drawCarrot('yank', 400), 160, 2, 50, 63);
+}
+function drawEndArt(canvas, won){
+  const x = canvas.getContext('2d'); x.imageSmoothingEnabled = false;
+  x.clearRect(0,0,canvas.width,canvas.height);
+  if (won){ x.drawImage(drawRabbit('jump'), 30, 6, 56, 52); x.drawImage(drawCarrot('flee', 200), 140, 0, 46, 58); }
+  else { x.drawImage(drawRabbit('dizzy'), 30, 10, 56, 52); x.drawImage(drawCarrot('gloat', 200), 140, 0, 46, 58); }
+}
+
+/* buttons */
+$('#playBtn').addEventListener('click', () => {
+  AudioKit.ensure(); hideOverlays(); bootGame(); if (!AudioKit.muted) AudioKit.startMusic();
+});
+$('#againBtn').addEventListener('click', () => {
+  hideOverlays(); if (game) game.scene.getScene('game').restart(); else bootGame();
+});
+window.toggleMute = function(){
+  AudioKit.setMuted(!AudioKit.muted);
+  const b = $('#mutebtn'); b.textContent = AudioKit.muted ? '♪ Sound off' : '♪ Sound on';
+  b.setAttribute('aria-pressed', String(AudioKit.muted));
+};
+$('#mutebtn').addEventListener('click', window.toggleMute);
+drawTitleArt($('#titleArt'));
+
+</script>
+</body>
+</html>
